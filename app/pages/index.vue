@@ -71,9 +71,104 @@
         </div>
       </section>
 
+      <!-- Feature 1: Beneficiary Lookup -->
+      <section class="card">
+        <h2>3. Recherche d'un Bénéficiaire (Lookup)</h2>
+        <p class="desc">Endpoint: <code>GET /api/pispi/lookup?alias=...</code></p>
+
+        <div class="form-group">
+          <label>Alias du bénéficiaire / Numéro :</label>
+          <input v-model="lookupAlias" type="text" placeholder="Ex: 2250102030405 ou ALIAS_TEST" class="input" />
+        </div>
+
+        <button @click="testLookup" :disabled="lookupLoading || !lookupAlias" class="btn primary">
+          {{ lookupLoading ? 'Recherche...' : 'Rechercher le bénéficiaire' }}
+        </button>
+
+        <div v-if="lookupResult" :class="['response-box', lookupResult.success ? 'success' : 'error']">
+          <h4>{{ lookupResult.success ? 'Bénéficiaire Trouvé' : 'Résultat Recherche' }}</h4>
+          <p v-if="lookupResult.message">{{ lookupResult.message }}</p>
+          <div v-if="lookupResult.success && lookupResult.beneficiary">
+            <ul class="info-list compact">
+              <li><strong>Nom:</strong> {{ lookupResult.beneficiary.name || 'N/A' }}</li>
+              <li><strong>Compte:</strong> {{ lookupResult.beneficiary.accountNumber || 'N/A' }}</li>
+              <li><strong>Participant:</strong> {{ lookupResult.beneficiary.participantCode || 'N/A' }}</li>
+              <li><strong>Statut:</strong> {{ lookupResult.beneficiary.status || 'ACTIVE' }}</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature 2: Transfer Initiation -->
+      <section class="card">
+        <h2>4. Initiation d'un Transfert Instantané</h2>
+        <p class="desc">Endpoint: <code>POST /api/pispi/transfer</code></p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Montant (XOF) :</label>
+            <input v-model.number="transferAmount" type="number" min="1" class="input" />
+          </div>
+          <div class="form-group">
+            <label>Compte Débiteur :</label>
+            <input v-model="transferDebtor" type="text" placeholder="ACC_DEBTOR_001" class="input" />
+          </div>
+          <div class="form-group">
+            <label>Compte Créancier :</label>
+            <input v-model="transferCreditor" type="text" placeholder="ACC_CREDITOR_002" class="input" />
+          </div>
+          <div class="form-group">
+            <label>EndToEnd ID (Optionnel) :</label>
+            <input v-model="transferEndToEndId" type="text" placeholder="E2E-AUTO" class="input" />
+          </div>
+        </div>
+
+        <button @click="testTransfer" :disabled="transferLoading" class="btn primary">
+          {{ transferLoading ? 'Initiation en cours...' : 'Initier le transfert' }}
+        </button>
+
+        <div v-if="transferResult" :class="['response-box', transferResult.success ? 'success' : 'error']">
+          <h4>{{ transferResult.success ? 'Transfert Initié' : 'Échec du Transfert' }}</h4>
+          <p v-if="transferResult.message">{{ transferResult.message }}</p>
+          <ul v-if="transferResult.success" class="info-list compact">
+            <li><strong>Transaction ID:</strong> {{ transferResult.transactionId || 'N/A' }}</li>
+            <li><strong>EndToEnd ID:</strong> {{ transferResult.endToEndId }}</li>
+            <li><strong>Statut:</strong> <code>{{ transferResult.status }}</code></li>
+            <li><strong>Montant:</strong> {{ transferResult.amount }} {{ transferResult.currency }}</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Feature 3: Status Lookup -->
+      <section class="card full-width">
+        <h2>5. Consultation du Statut d'une Transaction</h2>
+        <p class="desc">Endpoint: <code>GET /api/pispi/status?id=...</code></p>
+
+        <div class="form-group">
+          <label>Identifiant de Transaction ou EndToEnd ID :</label>
+          <div class="input-row">
+            <input v-model="statusTxId" type="text" placeholder="Ex: TX-123456 ou E2E-789" class="input" />
+            <button @click="testStatus" :disabled="statusLoading || !statusTxId" class="btn primary">
+              {{ statusLoading ? 'Consultation...' : 'Consulter le statut' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="statusResult" :class="['response-box', statusResult.success ? 'success' : 'error']">
+          <h4>{{ statusResult.success ? 'Statut de la Transaction' : 'Erreur Consultation' }}</h4>
+          <p v-if="statusResult.message">{{ statusResult.message }}</p>
+          <ul v-if="statusResult.success" class="info-list compact">
+            <li><strong>Identifiant recherché:</strong> {{ statusResult.id }}</li>
+            <li><strong>Transaction ID:</strong> {{ statusResult.transactionId || 'N/A' }}</li>
+            <li><strong>EndToEnd ID:</strong> {{ statusResult.endToEndId || 'N/A' }}</li>
+            <li><strong>Statut actuel:</strong> <code>{{ statusResult.status }}</code></li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Available Endpoints -->
       <section class="card full-width">
-        <h2>3. Routes Serveur PI-SPI de l'Architecture</h2>
+        <h2>6. Routes Serveur PI-SPI de l'Architecture</h2>
         <div class="table-responsive">
           <table>
             <thead>
@@ -96,7 +191,7 @@
 
       <!-- Prerequisites Card -->
       <section class="card full-width">
-        <h2>4. Prérequis d'Accès Sandbox BCEAO PI-SPI</h2>
+        <h2>7. Prérequis d'Accès Sandbox BCEAO PI-SPI</h2>
         <ol class="prereq-list">
           <li v-for="(prereq, index) in info?.prerequisites" :key="index">
             {{ prereq }}
@@ -115,6 +210,21 @@ const { data: info, pending, error } = await useFetch('/api/pispi')
 const authLoading = ref(false)
 const authResult = ref<any>(null)
 
+const lookupAlias = ref('2250102030405')
+const lookupLoading = ref(false)
+const lookupResult = ref<any>(null)
+
+const transferAmount = ref(5000)
+const transferDebtor = ref('ACC_DEBTOR_001')
+const transferCreditor = ref('ACC_CREDITOR_002')
+const transferEndToEndId = ref('')
+const transferLoading = ref(false)
+const transferResult = ref<any>(null)
+
+const statusTxId = ref('')
+const statusLoading = ref(false)
+const statusResult = ref<any>(null)
+
 async function testAuth() {
   authLoading.value = true
   authResult.value = null
@@ -128,6 +238,71 @@ async function testAuth() {
     }
   } finally {
     authLoading.value = false
+  }
+}
+
+async function testLookup() {
+  lookupLoading.value = true
+  lookupResult.value = null
+  try {
+    const res = await $fetch('/api/pispi/lookup', {
+      method: 'GET',
+      query: { alias: lookupAlias.value }
+    })
+    lookupResult.value = res
+  } catch (err: any) {
+    lookupResult.value = {
+      success: false,
+      message: err.data?.statusMessage || err.message || "Erreur lors de la recherche du bénéficiaire."
+    }
+  } finally {
+    lookupLoading.value = false
+  }
+}
+
+async function testTransfer() {
+  transferLoading.value = true
+  transferResult.value = null
+  try {
+    const res = await $fetch('/api/pispi/transfer', {
+      method: 'POST',
+      body: {
+        amount: transferAmount.value,
+        debtorAccount: transferDebtor.value,
+        creditorAccount: transferCreditor.value,
+        endToEndId: transferEndToEndId.value || undefined
+      }
+    })
+    transferResult.value = res
+    if (res.transactionId || res.endToEndId) {
+      statusTxId.value = res.transactionId || res.endToEndId
+    }
+  } catch (err: any) {
+    transferResult.value = {
+      success: false,
+      message: err.data?.statusMessage || err.message || "Erreur lors de l'initiation du transfert."
+    }
+  } finally {
+    transferLoading.value = false
+  }
+}
+
+async function testStatus() {
+  statusLoading.value = true
+  statusResult.value = null
+  try {
+    const res = await $fetch('/api/pispi/status', {
+      method: 'GET',
+      query: { id: statusTxId.value }
+    })
+    statusResult.value = res
+  } catch (err: any) {
+    statusResult.value = {
+      success: false,
+      message: err.data?.statusMessage || err.message || "Erreur lors de la consultation du statut."
+    }
+  } finally {
+    statusLoading.value = false
   }
 }
 </script>
@@ -185,6 +360,43 @@ async function testAuth() {
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
 .status-indicator {
@@ -260,6 +472,7 @@ async function testAuth() {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .btn.primary {
