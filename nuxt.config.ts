@@ -10,9 +10,9 @@ export default defineNuxtConfig({
       clientId: process.env.PISPI_CLIENT_ID || '',
       clientSecret: process.env.PISPI_CLIENT_SECRET || '',
       apiKey: process.env.PISPI_API_KEY || '',
-      // scope: process.env.PISPI_SCOPE || 'pispi:api',
+      scope: process.env.PISPI_SCOPE || '',
       participantCode: process.env.PISPI_PARTICIPANT_CODE || '',
-      // certPath: process.env.PISPI_CERT_PATH || '',
+      certPath: process.env.PISPI_CERT_PATH || '',
       keyPath: process.env.PISPI_KEY_PATH || ''
     }
   }

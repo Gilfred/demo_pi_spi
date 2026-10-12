@@ -26,9 +26,9 @@ export default defineEventHandler((event) => {
     endpointsAvailable: [
       { path: '/api/pispi', method: 'GET', description: 'Statut de la configuration et métadonnées PI-SPI' },
       { path: '/api/pispi/auth', method: 'POST', description: "Test d'authentification OAuth2 auprès de l'IDP PI-SPI" },
-      { path: '/api/pispi/lookup', method: 'POST', description: "Vérification d'un compte/alias auprès de PI-SPI (lookup)" },
-      { path: '/api/pispi/transfer', method: 'POST', description: "Initiation d'un virement/transfert instantané PI-SPI" },
-      { path: '/api/pispi/status', method: 'GET', description: "Interrogation du statut d'une transaction PI-SPI" }
+      { path: '/api/pispi/lookup', method: 'GET', description: "Recherche et vérification d'un bénéficiaire/alias (GET /alias/{alias})" },
+      { path: '/api/pispi/transfer', method: 'POST', description: "Initiation d'un transfert instantané (POST /paiements-envoyes) et confirmation" },
+      { path: '/api/pispi/status', method: 'GET', description: "Consultation du statut d'une transaction (GET /paiements/{txId} ou /paiements/{end2endId}/statuts)" }
     ],
     prerequisites: [
       "Inscription préalable sur le portail développeur PI-SPI de la BCEAO",
