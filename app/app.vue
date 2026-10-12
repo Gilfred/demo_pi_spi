@@ -1,6 +1,18 @@
 <template>
-  <div>
-    <NuxtRouteAnnouncer />
-    <NuxtWelcome />
+  <div class="app-wrapper">
+    <NuxtPage />
   </div>
 </template>
+
+<style>
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.app-wrapper {
+  min-height: 100vh;
+}
+</style>
