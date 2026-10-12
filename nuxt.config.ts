@@ -5,8 +5,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Private keys which are only available server-side
     pispi: {
-      baseUrl: process.env.PISPI_BASE_URL || 'https://sandbox.pispi.bceao.int',
-      authUrl: process.env.PISPI_AUTH_URL || 'https://sandbox-auth.pispi.bceao.int/oauth/token',
+      baseUrl: process.env.PISPI_BASE_URL || '',
+      authUrl: process.env.PISPI_AUTH_URL || '',
       clientId: process.env.PISPI_CLIENT_ID || '',
       clientSecret: process.env.PISPI_CLIENT_SECRET || '',
       apiKey: process.env.PISPI_API_KEY || '',
