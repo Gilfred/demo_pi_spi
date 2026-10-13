@@ -1,5 +1,3 @@
-import { useRuntimeConfig } from '#imports'
-
 export interface PispiConfig {
   baseUrl: string
   authUrl: string
@@ -19,12 +17,45 @@ export interface PispiTokenResponse {
   scope?: string
 }
 
+interface TokenCacheEntry {
+  data: PispiTokenResponse
+  expiresAt: number
+}
+
+let tokenCache: TokenCacheEntry | null = null
+
+/**
+ * Resets the in-memory token cache (useful for testing or cache invalidation).
+ */
+export function clearPispiTokenCache(): void {
+  tokenCache = null
+}
+
 /**
  * Helper to retrieve the server-side PI-SPI configuration.
  */
 export function getPispiConfig(): PispiConfig {
-  const config = useRuntimeConfig()
-  return config.pispi as PispiConfig
+  try {
+    // @ts-ignore
+    const config = typeof useRuntimeConfig === 'function' ? useRuntimeConfig() : {}
+    if (config && config.pispi) {
+      return config.pispi as PispiConfig
+    }
+  } catch {
+    // Fallback when outside Nuxt context (e.g. unit testing)
+  }
+
+  return {
+    baseUrl: process.env.PISPI_BASE_URL || '',
+    authUrl: process.env.PISPI_AUTH_URL || '',
+    clientId: process.env.PISPI_CLIENT_ID || '',
+    clientSecret: process.env.PISPI_CLIENT_SECRET || '',
+    apiKey: process.env.PISPI_API_KEY || '',
+    scope: process.env.PISPI_SCOPE || '',
+    participantCode: process.env.PISPI_PARTICIPANT_CODE || '',
+    certPath: process.env.PISPI_CERT_PATH || '',
+    keyPath: process.env.PISPI_KEY_PATH || ''
+  }
 }
 
 /**
@@ -46,8 +77,21 @@ export function validatePispiConfig(config: PispiConfig): { valid: boolean; miss
 }
 
 /**
- * Performs authentic OAuth2 client credentials authentication against the PI-SPI Auth Server.
- * NEVER returns or logs secrets.
+ * Helper to strip any sensitive credentials (client secret, API key, tokens) from error messages or logs.
+ */
+function sanitizeErrorMessage(message: string, secrets: string[]): string {
+  let sanitized = message || ''
+  for (const secret of secrets) {
+    if (secret && secret.length > 2) {
+      sanitized = sanitized.split(secret).join('[REDACTED]')
+    }
+  }
+  return sanitized
+}
+
+/**
+ * Performs OAuth2 client credentials authentication against the PI-SPI Auth Server.
+ * Reuses cached token if valid. NEVER returns or logs secrets.
  */
 export async function fetchPispiToken(): Promise<PispiTokenResponse> {
   const config = getPispiConfig()
@@ -60,7 +104,13 @@ export async function fetchPispiToken(): Promise<PispiTokenResponse> {
     })
   }
 
-  // OAuth2 client_credentials grant request
+  // Check in-memory cache (30 second safety margin before expiry)
+  if (tokenCache && Date.now() < tokenCache.expiresAt - 30000) {
+    return tokenCache.data
+  }
+
+  const secretsToMask = [config.clientSecret, config.apiKey].filter(Boolean)
+
   const params = new URLSearchParams()
   params.append('grant_type', 'client_credentials')
   params.append('client_id', config.clientId)
@@ -82,9 +132,10 @@ export async function fetchPispiToken(): Promise<PispiTokenResponse> {
 
     if (!response.ok) {
       const errorText = await response.text()
+      const sanitized = sanitizeErrorMessage(errorText || response.statusText, secretsToMask)
       throw createError({
         statusCode: response.status,
-        statusMessage: `Échec d'authentification auprès de l'IDP PI-SPI (${response.status}): ${errorText || response.statusText}`
+        statusMessage: `Échec d'authentification auprès de l'IDP PI-SPI (${response.status}): ${sanitized}`
       })
     }
 
@@ -96,12 +147,19 @@ export async function fetchPispiToken(): Promise<PispiTokenResponse> {
       })
     }
 
+    const expiresIn = typeof data.expires_in === 'number' ? data.expires_in : 3600
+    tokenCache = {
+      data,
+      expiresAt: Date.now() + expiresIn * 1000
+    }
+
     return data
   } catch (err: any) {
     if (err.statusCode) throw err
+    const safeMsg = sanitizeErrorMessage(err.message, secretsToMask)
     throw createError({
       statusCode: 503,
-      statusMessage: `Erreur de connexion au serveur d'authentification PI-SPI (${config.authUrl}): ${err.message}`
+      statusMessage: `Erreur de connexion au serveur d'authentification PI-SPI: ${safeMsg}`
     })
   }
 }
@@ -120,16 +178,27 @@ export async function pispiApiFetch<T = any>(
   const config = getPispiConfig()
   const tokenData = await fetchPispiToken()
 
-  const url = `${config.baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`
+  // Cleanly join baseUrl and endpoint without altering paths or adding unrequested prefixes
+  const cleanBase = config.baseUrl.replace(/\/$/, '')
+  const cleanEndpoint = endpoint.replace(/^\//, '')
+  const url = `${cleanBase}/${cleanEndpoint}`
+
+  const tokenType = (tokenData.token_type || 'Bearer').trim()
+  const defaultAuth = `${tokenType} ${tokenData.access_token}`
 
   const requestHeaders: Record<string, string> = {
-    'Authorization': `${tokenData.token_type || 'Bearer'} ${tokenData.access_token}`,
+    'Authorization': defaultAuth,
     'X-API-Key': config.apiKey,
-    'X-Participant-Code': config.participantCode,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     ...(options.headers || {})
   }
+
+  if (config.participantCode) {
+    requestHeaders['X-Participant-Code'] = config.participantCode
+  }
+
+  const secretsToMask = [config.clientSecret, config.apiKey, tokenData.access_token].filter(Boolean)
 
   try {
     const response = await fetch(url, {
@@ -140,18 +209,33 @@ export async function pispiApiFetch<T = any>(
 
     if (!response.ok) {
       const errorBody = await response.text()
+      const sanitized = sanitizeErrorMessage(errorBody || response.statusText, secretsToMask)
       throw createError({
         statusCode: response.status,
-        statusMessage: `Erreur API PI-SPI (${response.status}): ${errorBody || response.statusText}`
+        statusMessage: `Erreur API PI-SPI (${response.status}): ${sanitized}`
       })
     }
 
-    return (await response.json()) as T
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T
+    }
+
+    const text = await response.text()
+    if (!text || !text.trim()) {
+      return {} as T
+    }
+
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      return { raw: text } as T
+    }
   } catch (err: any) {
     if (err.statusCode) throw err
+    const safeMsg = sanitizeErrorMessage(err.message, secretsToMask)
     throw createError({
       statusCode: 502,
-      statusMessage: `Erreur lors de l'appel à l'API PI-SPI Gateway (${endpoint}): ${err.message}`
+      statusMessage: `Erreur lors de l'appel à l'API PI-SPI Gateway (${endpoint}): ${safeMsg}`
     })
   }
 }
