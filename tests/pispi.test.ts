@@ -86,11 +86,10 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.ok(sanitized.includes('[REDACTED]'))
   })
 
-  test('formatAuthorizationHeader formats Authorization header into key=value pair with equal-sign', () => {
-    assert.equal(formatAuthorizationHeader('Bearer', 'abc123token'), 'Bearer=abc123token')
-    assert.equal(formatAuthorizationHeader('Bearer=', 'abc123token'), 'Bearer=abc123token')
-    assert.equal(formatAuthorizationHeader('Bearer token=', 'abc123token'), 'Bearer token=abc123token')
-    assert.equal(formatAuthorizationHeader('', 'abc123token'), 'Bearer=abc123token')
-    assert.ok(formatAuthorizationHeader('Bearer', 'token').includes('='))
+  test('formatAuthorizationHeader formats Authorization header for standard Bearer scheme', () => {
+    assert.equal(formatAuthorizationHeader('Bearer', 'abc123token'), 'Bearer abc123token')
+    assert.equal(formatAuthorizationHeader('bearer', 'abc123token'), 'Bearer abc123token')
+    assert.equal(formatAuthorizationHeader('Custom', 'abc123token'), 'Custom abc123token')
+    assert.equal(formatAuthorizationHeader('', 'abc123token'), 'Bearer abc123token')
   })
 })

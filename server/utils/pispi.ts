@@ -77,18 +77,15 @@ export function validatePispiConfig(config: PispiConfig): { valid: boolean; miss
 }
 
 /**
- * Formats the Authorization header into key=value format (e.g. Bearer=<token>)
- * as required by the PI-SPI Gateway authorizer.
+ * Formats the Authorization header for PI-SPI API requests.
  */
 export function formatAuthorizationHeader(tokenType: string, token: string): string {
   const type = (tokenType || 'Bearer').trim()
-  if (type.includes('=')) {
-    return `${type}${token}`
+  if (!token) return ''
+  if (type.toLowerCase() === 'bearer') {
+    return `Bearer ${token}`
   }
-  if (type.includes(' ')) {
-    return `${type} ${token}`
-  }
-  return `${type}=${token}`
+  return `${type} ${token}`
 }
 
 /**
