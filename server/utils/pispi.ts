@@ -77,6 +77,43 @@ export function validatePispiConfig(config: PispiConfig): { valid: boolean; miss
 }
 
 /**
+ * Formats the Authorization header for PI-SPI API requests.
+ */
+export function formatAuthorizationHeader(tokenType: string, token: string): string {
+  const type = (tokenType || 'Bearer').trim()
+  if (!token) return ''
+  if (type.toLowerCase() === 'bearer') {
+    return `Bearer ${token}`
+  }
+  return `${type} ${token}`
+}
+
+/**
+ * Helper to construct the full endpoint path, inserting the participantCode prefix
+ * (e.g. /{participantCode}/alias/{alias}) when required by PI-SPI BCEAO Gateway.
+ */
+export function formatPispiEndpoint(endpoint: string, participantCode?: string): string {
+  if (!endpoint) return ''
+  const trimmed = endpoint.trim()
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed
+  }
+
+  const cleanEndpoint = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  const code = (participantCode || '').trim()
+
+  if (!code) {
+    return cleanEndpoint
+  }
+
+  if (cleanEndpoint.startsWith(`/${code}/`) || cleanEndpoint === `/${code}`) {
+    return cleanEndpoint
+  }
+
+  return `/${code}${cleanEndpoint}`
+}
+
+/**
  * Helper to strip any sensitive credentials (client secret, API key, tokens) from error messages or logs.
  */
 function sanitizeErrorMessage(message: string, secrets: string[]): string {
@@ -178,13 +215,13 @@ export async function pispiApiFetch<T = any>(
   const config = getPispiConfig()
   const tokenData = await fetchPispiToken()
 
-  // Cleanly join baseUrl and endpoint without altering paths or adding unrequested prefixes
+  const formattedEndpoint = formatPispiEndpoint(endpoint, config.participantCode)
   const cleanBase = config.baseUrl.replace(/\/$/, '')
-  const cleanEndpoint = endpoint.replace(/^\//, '')
+  const cleanEndpoint = formattedEndpoint.replace(/^\//, '')
   const url = `${cleanBase}/${cleanEndpoint}`
 
   const tokenType = (tokenData.token_type || 'Bearer').trim()
-  const defaultAuth = `${tokenType} ${tokenData.access_token}`
+  const defaultAuth = formatAuthorizationHeader(tokenType, tokenData.access_token)
 
   const requestHeaders: Record<string, string> = {
     'Authorization': defaultAuth,

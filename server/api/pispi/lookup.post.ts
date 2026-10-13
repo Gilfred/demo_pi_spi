@@ -3,7 +3,7 @@ import { pispiApiFetch } from '../../utils/pispi'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event) || {}
-  const rawAlias = (body.alias || body.identifier || '') as string
+  const rawAlias = (body.alias || body.identifier || body.account || '') as string
   const alias = rawAlias.trim()
 
   if (!alias) {
@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
+      type: 'alias',
       alias,
       beneficiary: {
         name: result.name || result.beneficiaryName || result.accountHolderName || result.creditorName || null,
@@ -37,11 +38,34 @@ export default defineEventHandler(async (event) => {
       data: result
     }
   } catch (error: any) {
+    const safeMsg = (error.statusMessage || error.message || '').toLowerCase()
+    if (error.statusCode === 400 && (safeMsg.includes('shid') || safeMsg.includes('alias'))) {
+      try {
+        const accountResult = await pispiApiFetch<any>(`/comptes/${encodeURIComponent(alias)}`, {
+          method: 'GET'
+        })
+        return {
+          success: true,
+          type: 'account',
+          alias,
+          beneficiary: {
+            name: accountResult.nom || accountResult.name || accountResult.intitule || accountResult.accountHolderName || 'Titulaire de compte',
+            accountNumber: accountResult.numeroCompte || accountResult.accountNumber || accountResult.id || alias,
+            participantCode: accountResult.codeParticipant || accountResult.participantCode || null,
+            status: accountResult.statut || accountResult.status || 'ACTIVE'
+          },
+          data: accountResult
+        }
+      } catch {
+        // preserve primary error
+      }
+    }
+
     const statusCode = error.statusCode || error.status || 500
     if (statusCode === 404) {
       throw createError({
         statusCode: 404,
-        statusMessage: `Aucun bénéficiaire trouvé pour l'alias '${alias}'.`
+        statusMessage: `Aucun bénéficiaire ou compte trouvé pour '${alias}'.`
       })
     }
     throw createError({
