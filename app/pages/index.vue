@@ -85,8 +85,8 @@
           <button @click="testLookup" :disabled="lookupLoading || !lookupAlias" class="btn primary">
             {{ lookupLoading ? 'Recherche...' : 'Rechercher (Alias/Compte)' }}
           </button>
-          <button @click="testFetchAccount" :disabled="lookupLoading || !lookupAlias" class="btn secondary">
-            Consulter Compte (/comptes)
+          <button @click="testFetchAccount" :disabled="lookupLoading" class="btn secondary">
+            {{ lookupLoading ? 'Consultation...' : 'Lister Tous Les Comptes (/comptes)' }}
           </button>
         </div>
 
