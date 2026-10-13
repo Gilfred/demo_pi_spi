@@ -71,30 +71,38 @@
         </div>
       </section>
 
-      <!-- Feature 1: Beneficiary Lookup -->
+      <!-- Feature 1: Beneficiary & Account Lookup -->
       <section class="card">
-        <h2>3. Recherche d'un Bénéficiaire (Lookup)</h2>
-        <p class="desc">Endpoint: <code>GET /api/pispi/lookup?alias=...</code></p>
+        <h2>3. Recherche Bénéficiaire & Compte</h2>
+        <p class="desc">Endpoints: <code>GET /api/pispi/lookup</code> & <code>GET /api/pispi/accounts</code></p>
 
         <div class="form-group">
-          <label>Alias du bénéficiaire / Numéro :</label>
-          <input v-model="lookupAlias" type="text" placeholder="Ex: 2250102030405 ou ALIAS_TEST" class="input" />
+          <label>Alias SHID ou Numéro de Compte :</label>
+          <input v-model="lookupAlias" type="text" placeholder="Ex: 92337092268450310321 ou +2250102030405" class="input" />
         </div>
 
-        <button @click="testLookup" :disabled="lookupLoading || !lookupAlias" class="btn primary">
-          {{ lookupLoading ? 'Recherche...' : 'Rechercher le bénéficiaire' }}
-        </button>
+        <div class="btn-group">
+          <button @click="testLookup" :disabled="lookupLoading || !lookupAlias" class="btn primary">
+            {{ lookupLoading ? 'Recherche...' : 'Rechercher (Alias/Compte)' }}
+          </button>
+          <button @click="testFetchAccount" :disabled="lookupLoading || !lookupAlias" class="btn secondary">
+            Consulter Compte (/comptes)
+          </button>
+        </div>
 
         <div v-if="lookupResult" :class="['response-box', lookupResult.success ? 'success' : 'error']">
-          <h4>{{ lookupResult.success ? 'Bénéficiaire Trouvé' : 'Résultat Recherche' }}</h4>
+          <h4>{{ lookupResult.success ? (lookupResult.type === 'account' ? 'Compte Trouvé' : 'Bénéficiaire Trouvé') : 'Résultat Recherche' }}</h4>
           <p v-if="lookupResult.message">{{ lookupResult.message }}</p>
           <div v-if="lookupResult.success && lookupResult.beneficiary">
             <ul class="info-list compact">
-              <li><strong>Nom:</strong> {{ lookupResult.beneficiary.name || 'N/A' }}</li>
-              <li><strong>Compte:</strong> {{ lookupResult.beneficiary.accountNumber || 'N/A' }}</li>
+              <li><strong>Nom/Intitulé:</strong> {{ lookupResult.beneficiary.name || 'N/A' }}</li>
+              <li><strong>Numéro Compte:</strong> {{ lookupResult.beneficiary.accountNumber || 'N/A' }}</li>
               <li><strong>Participant:</strong> {{ lookupResult.beneficiary.participantCode || 'N/A' }}</li>
               <li><strong>Statut:</strong> {{ lookupResult.beneficiary.status || 'ACTIVE' }}</li>
             </ul>
+          </div>
+          <div v-else-if="lookupResult.success && lookupResult.data">
+            <pre class="json-box">{{ JSON.stringify(lookupResult.data, null, 2) }}</pre>
           </div>
         </div>
       </section>
@@ -254,6 +262,25 @@ async function testLookup() {
     lookupResult.value = {
       success: false,
       message: err.data?.statusMessage || err.message || "Erreur lors de la recherche du bénéficiaire."
+    }
+  } finally {
+    lookupLoading.value = false
+  }
+}
+
+async function testFetchAccount() {
+  lookupLoading.value = true
+  lookupResult.value = null
+  try {
+    const res = await $fetch('/api/pispi/accounts', {
+      method: 'GET',
+      query: { number: lookupAlias.value }
+    })
+    lookupResult.value = res
+  } catch (err: any) {
+    lookupResult.value = {
+      success: false,
+      message: err.data?.statusMessage || err.message || "Erreur lors de la consultation du compte."
     }
   } finally {
     lookupLoading.value = false
@@ -475,6 +502,12 @@ async function testStatus() {
   white-space: nowrap;
 }
 
+.btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .btn.primary {
   background-color: #2563eb;
   color: #ffffff;
@@ -482,6 +515,24 @@ async function testStatus() {
 
 .btn.primary:hover:not(:disabled) {
   background-color: #1d4ed8;
+}
+
+.btn.secondary {
+  background-color: #0284c7;
+  color: #ffffff;
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background-color: #0369a1;
+}
+
+.json-box {
+  background-color: #0f172a;
+  color: #38bdf8;
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
 }
 
 .btn:disabled {
