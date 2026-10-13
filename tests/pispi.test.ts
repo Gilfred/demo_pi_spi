@@ -62,7 +62,8 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
       if (isNaN(amount) || amount <= 0) return { valid: false, message: "Le montant ('amount') doit être un nombre strictly supérieur à 0." }
       if (!body.debtorAccount) return { valid: false, message: "Le compte ou l'identifiant du débiteur ('debtorAccount') est obligatoire." }
       if (!body.creditorAccount) return { valid: false, message: "Le compte ou l'identifiant du créancier ('creditorAccount') est obligatoire." }
-      return { valid: true }
+      const txId = (body.txId || 'TX123').trim()
+      return { valid: true, txId }
     }
 
     assert.equal(validateTransfer({ amount: 0, debtorAccount: 'A', creditorAccount: 'B' }).valid, false)
@@ -70,6 +71,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: '', creditorAccount: 'B' }).valid, false)
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'A', creditorAccount: '' }).valid, false)
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'ACC_A', creditorAccount: 'ACC_B' }).valid, true)
+    assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'ACC_A', creditorAccount: 'ACC_B' }).txId, 'TX123')
   })
 
   test('Secret masking helper prevents leaking sensitive credentials', () => {
@@ -98,5 +100,6 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(formatPispiEndpoint('/BFC999/alias/2250102030405', 'BFC999'), '/BFC999/alias/2250102030405')
     assert.equal(formatPispiEndpoint('/alias/2250102030405', ''), '/alias/2250102030405')
     assert.equal(formatPispiEndpoint('alias/2250102030405', 'BFC999'), '/BFC999/alias/2250102030405')
+    assert.equal(formatPispiEndpoint('https://no-mtls.piz.simulateurs.pi-bceao.com/BFC999/alias/123', 'BFC999'), 'https://no-mtls.piz.simulateurs.pi-bceao.com/BFC999/alias/123')
   })
 })

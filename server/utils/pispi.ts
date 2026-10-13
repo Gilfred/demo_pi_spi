@@ -93,7 +93,13 @@ export function formatAuthorizationHeader(tokenType: string, token: string): str
  * (e.g. /{participantCode}/alias/{alias}) when required by PI-SPI BCEAO Gateway.
  */
 export function formatPispiEndpoint(endpoint: string, participantCode?: string): string {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  if (!endpoint) return ''
+  const trimmed = endpoint.trim()
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed
+  }
+
+  const cleanEndpoint = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
   const code = (participantCode || '').trim()
 
   if (!code) {

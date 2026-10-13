@@ -62,7 +62,13 @@ export default defineEventHandler(async (event) => {
 
   const idempotencyKey = body.idempotencyKey || endToEndId
 
+  let txId = (body.txId || body.transactionId || '').trim()
+  if (!txId) {
+    txId = `TX${Date.now()}${Math.floor(Math.random() * 1000)}`
+  }
+
   const requestPayload = {
+    txId,
     endToEndId,
     amount: {
       value: amount,
