@@ -77,6 +77,21 @@ export function validatePispiConfig(config: PispiConfig): { valid: boolean; miss
 }
 
 /**
+ * Formats the Authorization header into key=value format (e.g. Bearer=<token>)
+ * as required by the PI-SPI Gateway authorizer.
+ */
+export function formatAuthorizationHeader(tokenType: string, token: string): string {
+  const type = (tokenType || 'Bearer').trim()
+  if (type.includes('=')) {
+    return `${type}${token}`
+  }
+  if (type.includes(' ')) {
+    return `${type} ${token}`
+  }
+  return `${type}=${token}`
+}
+
+/**
  * Helper to strip any sensitive credentials (client secret, API key, tokens) from error messages or logs.
  */
 function sanitizeErrorMessage(message: string, secrets: string[]): string {
@@ -184,7 +199,7 @@ export async function pispiApiFetch<T = any>(
   const url = `${cleanBase}/${cleanEndpoint}`
 
   const tokenType = (tokenData.token_type || 'Bearer').trim()
-  const defaultAuth = `${tokenType} ${tokenData.access_token}`
+  const defaultAuth = formatAuthorizationHeader(tokenType, tokenData.access_token)
 
   const requestHeaders: Record<string, string> = {
     'Authorization': defaultAuth,

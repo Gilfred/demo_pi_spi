@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { validatePispiConfig, clearPispiTokenCache } from '../server/utils/pispi.ts'
+import { validatePispiConfig, clearPispiTokenCache, formatAuthorizationHeader } from '../server/utils/pispi.ts'
 
 describe('PI-SPI BCEAO Integration Unit Tests', () => {
 
@@ -84,5 +84,13 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.ok(!sanitized.includes('secret_key_123'))
     assert.ok(!sanitized.includes('api_key_456'))
     assert.ok(sanitized.includes('[REDACTED]'))
+  })
+
+  test('formatAuthorizationHeader formats Authorization header into key=value pair with equal-sign', () => {
+    assert.equal(formatAuthorizationHeader('Bearer', 'abc123token'), 'Bearer=abc123token')
+    assert.equal(formatAuthorizationHeader('Bearer=', 'abc123token'), 'Bearer=abc123token')
+    assert.equal(formatAuthorizationHeader('Bearer token=', 'abc123token'), 'Bearer token=abc123token')
+    assert.equal(formatAuthorizationHeader('', 'abc123token'), 'Bearer=abc123token')
+    assert.ok(formatAuthorizationHeader('Bearer', 'token').includes('='))
   })
 })
