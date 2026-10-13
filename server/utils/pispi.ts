@@ -89,6 +89,25 @@ export function formatAuthorizationHeader(tokenType: string, token: string): str
 }
 
 /**
+ * Helper to construct the full endpoint path, inserting the participantCode prefix
+ * (e.g. /{participantCode}/alias/{alias}) when required by PI-SPI BCEAO Gateway.
+ */
+export function formatPispiEndpoint(endpoint: string, participantCode?: string): string {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  const code = (participantCode || '').trim()
+
+  if (!code) {
+    return cleanEndpoint
+  }
+
+  if (cleanEndpoint.startsWith(`/${code}/`) || cleanEndpoint === `/${code}`) {
+    return cleanEndpoint
+  }
+
+  return `/${code}${cleanEndpoint}`
+}
+
+/**
  * Helper to strip any sensitive credentials (client secret, API key, tokens) from error messages or logs.
  */
 function sanitizeErrorMessage(message: string, secrets: string[]): string {
@@ -190,9 +209,9 @@ export async function pispiApiFetch<T = any>(
   const config = getPispiConfig()
   const tokenData = await fetchPispiToken()
 
-  // Cleanly join baseUrl and endpoint without altering paths or adding unrequested prefixes
+  const formattedEndpoint = formatPispiEndpoint(endpoint, config.participantCode)
   const cleanBase = config.baseUrl.replace(/\/$/, '')
-  const cleanEndpoint = endpoint.replace(/^\//, '')
+  const cleanEndpoint = formattedEndpoint.replace(/^\//, '')
   const url = `${cleanBase}/${cleanEndpoint}`
 
   const tokenType = (tokenData.token_type || 'Bearer').trim()

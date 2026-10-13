@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { validatePispiConfig, clearPispiTokenCache, formatAuthorizationHeader } from '../server/utils/pispi.ts'
+import { validatePispiConfig, clearPispiTokenCache, formatAuthorizationHeader, formatPispiEndpoint } from '../server/utils/pispi.ts'
 
 describe('PI-SPI BCEAO Integration Unit Tests', () => {
 
@@ -91,5 +91,12 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(formatAuthorizationHeader('bearer', 'abc123token'), 'Bearer abc123token')
     assert.equal(formatAuthorizationHeader('Custom', 'abc123token'), 'Custom abc123token')
     assert.equal(formatAuthorizationHeader('', 'abc123token'), 'Bearer abc123token')
+  })
+
+  test('formatPispiEndpoint prepends participantCode to endpoint paths', () => {
+    assert.equal(formatPispiEndpoint('/alias/2250102030405', 'BFC999'), '/BFC999/alias/2250102030405')
+    assert.equal(formatPispiEndpoint('/BFC999/alias/2250102030405', 'BFC999'), '/BFC999/alias/2250102030405')
+    assert.equal(formatPispiEndpoint('/alias/2250102030405', ''), '/alias/2250102030405')
+    assert.equal(formatPispiEndpoint('alias/2250102030405', 'BFC999'), '/BFC999/alias/2250102030405')
   })
 })
