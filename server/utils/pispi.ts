@@ -183,8 +183,11 @@ export async function pispiApiFetch<T = any>(
   const cleanEndpoint = endpoint.replace(/^\//, '')
   const url = `${cleanBase}/${cleanEndpoint}`
 
+  const tokenType = (tokenData.token_type || 'Bearer').trim()
+  const defaultAuth = `${tokenType} ${tokenData.access_token}`
+
   const requestHeaders: Record<string, string> = {
-    'Authorization': `${tokenData.token_type || 'Bearer'} ${tokenData.access_token}`,
+    'Authorization': defaultAuth,
     'X-API-Key': config.apiKey,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
