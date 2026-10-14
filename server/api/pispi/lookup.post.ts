@@ -38,30 +38,46 @@ export default defineEventHandler(async (event) => {
       data: result
     }
   } catch (error: any) {
-    const safeMsg = (error.statusMessage || error.message || '').toLowerCase()
-    if (error.statusCode === 400 && (safeMsg.includes('shid') || safeMsg.includes('alias'))) {
+    const statusCode = error.statusCode || error.status || 500
+
+    // Fallback to /comptes when /alias/{cle} fails (e.g., input is an account number, not a SHID alias)
+    if (statusCode === 400 || statusCode === 404) {
       try {
-        const accountResult = await pispiApiFetch<any>(`/comptes/${encodeURIComponent(alias)}`, {
-          method: 'GET'
-        })
-        return {
-          success: true,
-          type: 'account',
-          alias,
-          beneficiary: {
-            name: accountResult.nom || accountResult.name || accountResult.intitule || accountResult.accountHolderName || 'Titulaire de compte',
-            accountNumber: accountResult.numeroCompte || accountResult.accountNumber || accountResult.id || alias,
-            participantCode: accountResult.codeParticipant || accountResult.participantCode || null,
-            status: accountResult.statut || accountResult.status || 'ACTIVE'
-          },
-          data: accountResult
+        let accountResult: any
+        try {
+          accountResult = await pispiApiFetch<any>(`/comptes/${encodeURIComponent(alias)}`, { method: 'GET' })
+        } catch {
+          // If /comptes/{id} is not supported or returns error, fetch all accounts via /comptes
+          accountResult = await pispiApiFetch<any>('/comptes', { method: 'GET' })
+        }
+
+        const items = Array.isArray(accountResult)
+          ? accountResult
+          : (accountResult?.data && Array.isArray(accountResult.data) ? accountResult.data : [accountResult])
+
+        const acc = items.find((a: any) =>
+          a && (a.numero === alias || a.numeroCompte === alias || a.accountNumber === alias || a.id === alias)
+        ) || (accountResult?.numero || accountResult?.numeroCompte ? accountResult : (items.length === 1 ? items[0] : null))
+
+        if (acc) {
+          return {
+            success: true,
+            type: 'account',
+            alias,
+            beneficiary: {
+              name: acc.nom || acc.name || acc.intitule || acc.accountHolderName || 'Titulaire de compte',
+              accountNumber: acc.numero || acc.numeroCompte || acc.accountNumber || acc.id || alias,
+              participantCode: acc.codeParticipant || acc.participantCode || null,
+              status: acc.statut || acc.status || 'OUVERT'
+            },
+            data: acc
+          }
         }
       } catch {
         // preserve primary error
       }
     }
 
-    const statusCode = error.statusCode || error.status || 500
     if (statusCode === 404) {
       throw createError({
         statusCode: 404,

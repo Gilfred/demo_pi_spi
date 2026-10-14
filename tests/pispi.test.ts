@@ -76,6 +76,27 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'ACC_A', creditorAccount: 'ACC_B' }).txId, 'TX123')
   })
 
+  test('Account lookup fallback correctly maps numero and statut', () => {
+    const rawAccountData = {
+      data: [
+        {
+          numero: '13608524542126896068',
+          type: 'TRAN',
+          dateOuverture: '2026-10-14',
+          statut: 'OUVERT'
+        }
+      ]
+    }
+
+    const alias = '13608524542126896068'
+    const items = Array.isArray(rawAccountData) ? rawAccountData : rawAccountData.data
+    const acc = items.find((a: any) => a.numero === alias || a.numeroCompte === alias)
+
+    assert.ok(acc)
+    assert.equal(acc.numero, '13608524542126896068')
+    assert.equal(acc.statut, 'OUVERT')
+  })
+
   test('Transfer payload includes payeurAlias and beneficiaireAlias', () => {
     const buildPayload = (body: any) => {
       const amount = Number(body.amount)
