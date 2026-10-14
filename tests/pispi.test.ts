@@ -59,9 +59,11 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
   test('Input validation rules for transfer initiation', () => {
     const validateTransfer = (body: any) => {
       const amount = Number(body.amount)
+      const debtorAccount = body.debtorAccount || body.debtor || body.payeurAlias || body.payeur
+      const creditorAccount = body.creditorAccount || body.creditor || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
       if (isNaN(amount) || amount <= 0) return { valid: false, message: "Le montant ('amount') doit être un nombre strictly supérieur à 0." }
-      if (!body.debtorAccount) return { valid: false, message: "Le compte ou l'identifiant du débiteur ('debtorAccount') est obligatoire." }
-      if (!body.creditorAccount) return { valid: false, message: "Le compte ou l'identifiant du créancier ('creditorAccount') est obligatoire." }
+      if (!debtorAccount) return { valid: false, message: "Le compte ou l'identifiant du débiteur ('debtorAccount') est obligatoire." }
+      if (!creditorAccount) return { valid: false, message: "Le compte ou l'identifiant du créancier ('creditorAccount') est obligatoire." }
       const txId = (body.txId || 'TX123').trim()
       return { valid: true, txId }
     }
@@ -72,6 +74,40 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'A', creditorAccount: '' }).valid, false)
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'ACC_A', creditorAccount: 'ACC_B' }).valid, true)
     assert.equal(validateTransfer({ amount: 1000, debtorAccount: 'ACC_A', creditorAccount: 'ACC_B' }).txId, 'TX123')
+  })
+
+  test('Transfer payload includes payeurAlias and beneficiaireAlias', () => {
+    const buildPayload = (body: any) => {
+      const amount = Number(body.amount)
+      const currency = (body.currency || 'XOF').toUpperCase()
+      const debtorAccount = body.debtorAccount || body.debtor || body.payeurAlias || body.payeur
+      const creditorAccount = body.creditorAccount || body.creditor || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
+      const txId = 'TX_TEST_1'
+      const endToEndId = 'E2E_TEST_1'
+      const payeurAlias = body.payeurAlias || (typeof debtorAccount === 'string' ? debtorAccount : (debtorAccount?.account || debtorAccount?.alias || ''))
+      const beneficiaireAlias = body.beneficiaireAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || ''))
+
+      return {
+        txId,
+        endToEndId,
+        payeurAlias,
+        beneficiaireAlias,
+        amount: { value: amount, currency },
+        debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
+        creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: beneficiaireAlias }
+      }
+    }
+
+    const payload = buildPayload({
+      amount: 5000,
+      debtorAccount: '92337092268450310321',
+      creditorAccount: '13608524542126896068'
+    })
+
+    assert.equal(payload.payeurAlias, '92337092268450310321')
+    assert.equal(payload.beneficiaireAlias, '13608524542126896068')
+    assert.equal(payload.debtor.account, '92337092268450310321')
+    assert.equal(payload.creditor.account, '13608524542126896068')
   })
 
   test('Secret masking helper prevents leaking sensitive credentials', () => {
