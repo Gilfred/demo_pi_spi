@@ -97,7 +97,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(acc.statut, 'OUVERT')
   })
 
-  test('Transfer payload includes payeurAlias, payeAlias, beneficiaireAlias, montant, devise and motif', () => {
+  test('Transfer payload includes payeurAlias, payeAlias, beneficiaireAlias, montant, devise, motif and confirmation', () => {
     const buildPayload = (body: any) => {
       const amount = Number(body.amount)
       const currency = (body.currency || 'XOF').toUpperCase()
@@ -119,6 +119,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
         montant: amount,
         devise: currency,
         motif: remittanceInformation,
+        confirmation: body.confirmation ?? true,
         amount: { value: amount, currency },
         debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
         creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: payeAlias }
@@ -137,6 +138,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(payload.montant, 5000)
     assert.equal(payload.devise, 'XOF')
     assert.equal(payload.motif, 'Transfert instantane PI-SPI')
+    assert.equal(payload.confirmation, true)
     assert.equal(payload.debtor.account, '92337092268450310321')
     assert.equal(payload.creditor.account, '13608524542126896068')
   })

@@ -81,6 +81,7 @@ export default defineEventHandler(async (event) => {
     montant: amount,
     devise: currency,
     motif: remittanceInformation,
+    confirmation: body.confirmation ?? true,
     amount: {
       value: amount,
       currency
@@ -108,11 +109,13 @@ export default defineEventHandler(async (event) => {
         const confirmResult = await pispiApiFetch<any>(`/paiements-envoyes/${encodeURIComponent(transactionId)}/confirmations`, {
           method: 'PUT',
           body: {
+            confirmation: true,
             status: 'CONFIRMED',
+            statut: 'CONFIRMED',
             confirmationTimestamp: new Date().toISOString()
           }
         })
-        status = (confirmResult.status || 'CONFIRMED').toUpperCase()
+        status = (confirmResult.status || confirmResult.statut || 'CONFIRMED').toUpperCase()
       } catch (confirmErr: any) {
         // Log or preserve status
       }
