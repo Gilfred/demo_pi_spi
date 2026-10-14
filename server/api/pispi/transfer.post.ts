@@ -70,6 +70,7 @@ export default defineEventHandler(async (event) => {
   const payeurAlias = body.payeurAlias || (typeof debtorAccount === 'string' ? debtorAccount : (debtorAccount?.account || debtorAccount?.alias || debtorAccount?.id || ''))
   const beneficiaireAlias = body.beneficiaireAlias || body.payeAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || creditorAccount?.id || ''))
   const payeAlias = body.payeAlias || beneficiaireAlias
+  const remittanceInformation = body.remittanceInformation || body.reason || body.motif || 'Transfert instantane PI-SPI'
 
   const requestPayload: Record<string, any> = {
     txId,
@@ -77,13 +78,16 @@ export default defineEventHandler(async (event) => {
     payeurAlias,
     payeAlias,
     beneficiaireAlias,
+    montant: amount,
+    devise: currency,
+    motif: remittanceInformation,
     amount: {
       value: amount,
       currency
     },
     debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
     creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: payeAlias },
-    remittanceInformation: body.remittanceInformation || body.reason || 'Transfert instantane PI-SPI'
+    remittanceInformation
   }
 
   try {

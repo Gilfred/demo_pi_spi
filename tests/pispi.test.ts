@@ -97,7 +97,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(acc.statut, 'OUVERT')
   })
 
-  test('Transfer payload includes payeurAlias, payeAlias and beneficiaireAlias', () => {
+  test('Transfer payload includes payeurAlias, payeAlias, beneficiaireAlias, montant, devise and motif', () => {
     const buildPayload = (body: any) => {
       const amount = Number(body.amount)
       const currency = (body.currency || 'XOF').toUpperCase()
@@ -108,6 +108,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
       const payeurAlias = body.payeurAlias || (typeof debtorAccount === 'string' ? debtorAccount : (debtorAccount?.account || debtorAccount?.alias || ''))
       const beneficiaireAlias = body.beneficiaireAlias || body.payeAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || ''))
       const payeAlias = body.payeAlias || beneficiaireAlias
+      const remittanceInformation = body.remittanceInformation || body.reason || body.motif || 'Transfert instantane PI-SPI'
 
       return {
         txId,
@@ -115,6 +116,9 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
         payeurAlias,
         payeAlias,
         beneficiaireAlias,
+        montant: amount,
+        devise: currency,
+        motif: remittanceInformation,
         amount: { value: amount, currency },
         debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
         creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: payeAlias }
@@ -130,6 +134,9 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(payload.payeurAlias, '92337092268450310321')
     assert.equal(payload.payeAlias, '13608524542126896068')
     assert.equal(payload.beneficiaireAlias, '13608524542126896068')
+    assert.equal(payload.montant, 5000)
+    assert.equal(payload.devise, 'XOF')
+    assert.equal(payload.motif, 'Transfert instantane PI-SPI')
     assert.equal(payload.debtor.account, '92337092268450310321')
     assert.equal(payload.creditor.account, '13608524542126896068')
   })
