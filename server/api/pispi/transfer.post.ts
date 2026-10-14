@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const amount = Number(rawAmount)
   const currency = (body.currency || 'XOF').toUpperCase()
   const debtorAccount = body.debtorAccount || body.debtor || body.payeurAlias || body.payeur
-  const creditorAccount = body.creditorAccount || body.creditor || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
+  const creditorAccount = body.creditorAccount || body.creditor || body.payeAlias || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
   let endToEndId = (body.endToEndId || body.end2endId || '').trim()
 
   if (isNaN(amount) || amount <= 0) {
@@ -68,19 +68,21 @@ export default defineEventHandler(async (event) => {
   }
 
   const payeurAlias = body.payeurAlias || (typeof debtorAccount === 'string' ? debtorAccount : (debtorAccount?.account || debtorAccount?.alias || debtorAccount?.id || ''))
-  const beneficiaireAlias = body.beneficiaireAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || creditorAccount?.id || ''))
+  const beneficiaireAlias = body.beneficiaireAlias || body.payeAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || creditorAccount?.id || ''))
+  const payeAlias = body.payeAlias || beneficiaireAlias
 
   const requestPayload: Record<string, any> = {
     txId,
     endToEndId,
     payeurAlias,
+    payeAlias,
     beneficiaireAlias,
     amount: {
       value: amount,
       currency
     },
     debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
-    creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: beneficiaireAlias },
+    creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: payeAlias },
     remittanceInformation: body.remittanceInformation || body.reason || 'Transfert instantane PI-SPI'
   }
 

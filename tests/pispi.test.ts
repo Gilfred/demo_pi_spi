@@ -97,25 +97,27 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     assert.equal(acc.statut, 'OUVERT')
   })
 
-  test('Transfer payload includes payeurAlias and beneficiaireAlias', () => {
+  test('Transfer payload includes payeurAlias, payeAlias and beneficiaireAlias', () => {
     const buildPayload = (body: any) => {
       const amount = Number(body.amount)
       const currency = (body.currency || 'XOF').toUpperCase()
       const debtorAccount = body.debtorAccount || body.debtor || body.payeurAlias || body.payeur
-      const creditorAccount = body.creditorAccount || body.creditor || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
+      const creditorAccount = body.creditorAccount || body.creditor || body.payeAlias || body.beneficiaireAlias || body.beneficiaire || body.creditorAlias
       const txId = 'TX_TEST_1'
       const endToEndId = 'E2E_TEST_1'
       const payeurAlias = body.payeurAlias || (typeof debtorAccount === 'string' ? debtorAccount : (debtorAccount?.account || debtorAccount?.alias || ''))
-      const beneficiaireAlias = body.beneficiaireAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || ''))
+      const beneficiaireAlias = body.beneficiaireAlias || body.payeAlias || body.creditorAlias || (typeof creditorAccount === 'string' ? creditorAccount : (creditorAccount?.account || creditorAccount?.alias || ''))
+      const payeAlias = body.payeAlias || beneficiaireAlias
 
       return {
         txId,
         endToEndId,
         payeurAlias,
+        payeAlias,
         beneficiaireAlias,
         amount: { value: amount, currency },
         debtor: typeof debtorAccount === 'object' ? debtorAccount : { account: debtorAccount, alias: payeurAlias },
-        creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: beneficiaireAlias }
+        creditor: typeof creditorAccount === 'object' ? creditorAccount : { account: creditorAccount, alias: payeAlias }
       }
     }
 
@@ -126,6 +128,7 @@ describe('PI-SPI BCEAO Integration Unit Tests', () => {
     })
 
     assert.equal(payload.payeurAlias, '92337092268450310321')
+    assert.equal(payload.payeAlias, '13608524542126896068')
     assert.equal(payload.beneficiaireAlias, '13608524542126896068')
     assert.equal(payload.debtor.account, '92337092268450310321')
     assert.equal(payload.creditor.account, '13608524542126896068')
